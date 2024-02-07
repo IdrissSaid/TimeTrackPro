@@ -57,7 +57,7 @@ export async function PUT(request: Request,{ params }: { params: { id: string } 
     } else if (role && Array.isArray(role) && role.length > 0) {
       role.forEach((roleItem) => {
         const index = userFound.role.indexOf(roleItem);
-        userFound.role = index === -1
+        userFound.role = (index === -1)
           ? [...userFound.role, roleItem]
           : userFound.role.filter(item => item !== roleItem);
         });
