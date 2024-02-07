@@ -9,34 +9,35 @@ export interface IUser extends Document {
   updatedAt: Date;
 }
 
-const UserSchema = new mongoose.Schema(
-  {
-    firstName: {
-      type: String,
-      required: [true, 'Need First Name'],
-    },
-    lastName: {
-      type: String,
-      required: [true, 'Need Last Name'],
-    },
-    role: {
-      type: [String],
-      required: [true, 'Need at least one Role'],
-      validate: {
-        validator: (roles: string[]) => roles.length > 0,
-        message: 'At least one role is required',
+const User: Model<IUser> | undefined = mongoose.models.User
+  ? mongoose.model<IUser>("User")
+  : mongoose.model<IUser>("User", new mongoose.Schema(
+      {
+        firstName: {
+          type: String,
+          required: [true, 'Need First Name'],
+        },
+        lastName: {
+          type: String,
+          required: [true, 'Need Last Name'],
+        },
+        role: {
+          type: [String],
+          required: [true, 'Need at least one Role'],
+          validate: {
+            validator: (roles: string[]) => roles.length > 0,
+            message: 'At least one role is required',
+          },
+        },
+        code: {
+          type: String,
+          unique: true,
+          required: [true, 'Need Code'],
+        },
       },
-    },
-    code: {
-      type: String,
-      required: [true, 'Need Code'],
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
+      {
+        timestamps: true,
+      }
+    ));
 
-const UserModel: Model<IUser> = mongoose.model<IUser>("User", UserSchema);
-
-export default UserModel;
+export default User;
