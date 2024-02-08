@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import verifyCode from "@/app/lib/verify";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const code = headers()?.get('code')
+
   if (!params.id) {
     return NextResponse.json({message: "User Not Found"}, {status: 404})
   }
@@ -17,54 +19,68 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         firstName: true,
         role: true,
         lastName: true,
-        code: true
+        code: true,
+        pointages: true
       }
     })
     if (!userFound) {
       return NextResponse.json({messge: "User not found"}, {status: 404})
     }
-    return NextResponse.json({messge: "User found", "": userFound}, {status: 200})
+    return NextResponse.json({messge: "User found", "user": userFound}, {status: 200})
   } catch (err) {
     return NextResponse.json({message: err}, {status: 500})
   }
 }
 
-export async function DELETE(request: Request,{ params }: { params: { id: string } }) {
-  const code = headers()?.get('code')
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  const code = headers()?.get('code');
 
   if (!code)
-    return NextResponse.json({ message: "Access Denied"}, { status: 403 })
+    return NextResponse.json({ message: "Access Denied" }, { status: 403 });
 
-  const verify = await verifyCode(code)
+  const verify = await verifyCode(code);
 
   if (verify)
-    return verify
-  if (!params.id) {
-      return NextResponse.json({status: 400})
-  }
+    return verify;
 
+  if (!params.id) {
+    return NextResponse.json({ status: 400 });
+  }
   try {
-    const res = await prisma.user?.delete({
+    const user = await prisma.user.findUnique({
       where: {
-        code: params.id
+        code: params.id,
       },
       include: {
-        pointages: true
-      }
-    })
-    if (!res)
-      return NextResponse.json({messge: "User not found"}, {status: 404})
-    return NextResponse.json({message: "User deleted"})
+        pointages: true,
+      },
+    });
+    if (!user) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
+    }
+    await prisma.pointage.deleteMany({
+      where: {
+        userId: user.id,
+      },
+    });
+    const deletedUser = await prisma.user.delete({
+      where: {
+        code: params.id,
+      },
+    });
+    if (!deletedUser) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
+    }
+    return NextResponse.json({ message: "User and associated Pointages deleted" });
   } catch (err) {
-    return NextResponse.json({message: err}, {status: 500})
+    console.error(err);
+    return NextResponse.json({ message: err }, { status: 500 });
   }
 }
+
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   const code = headers()?.get('code')
-
-  if (!code)
-    return NextResponse.json({ message: "Access Denied"}, { status: 403 })
 
   const verify = await verifyCode(code)
 
@@ -93,7 +109,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (!userFound) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
-
+    console.log(firstName, lastName, role);
     const updatedUser = await prisma.user.update({
       where: { id: userFound.id },
       data: {
