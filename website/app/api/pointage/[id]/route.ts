@@ -1,15 +1,32 @@
-import pointage from '@/Model/Pointage'
-import connectDB from '@/app/lib/connectDB'
 import { NextResponse } from "next/server";
+import prisma from "@/db";
+import { headers } from "next/headers";
+import verifyCode from "@/app/lib/verify";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   if (!params.id) {
     return NextResponse.json({status: 400})
   }
-  await connectDB()
 
   try {
-    const pointageFound = await pointage?.findById(params.id).select('date pause').populate('user', '-_id firstName lastName code role')
+    const pointageFound = await prisma.pointage.findUnique({
+      where: {
+        id: params.id
+      },
+      select: {
+        date: true,
+        pause: true,
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            code: true,
+            role: true
+          }
+        }
+      },
+    });
+
     if (!pointageFound) {
       return NextResponse.json({messge: "Pointage not found"}, {status: 404})
     }
@@ -20,13 +37,22 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function DELETE(request: Request,{ params }: { params: { id: string } }) {
+  const code = headers()?.get('code')
+
+  const verify = await verifyCode(code)
+
+  if (verify)
+    return verify
   if (!params.id) {
       return NextResponse.json({status: 400})
   }
-  await connectDB()
 
   try {
-    const res = await pointage?.findByIdAndDelete(params.id)
+    const res = await prisma.pointage?.delete({
+      where: {
+        id: params.id
+      },
+    })
     if (!res)
       return NextResponse.json({messge: "Pointage not found"}, {status: 404})
     return NextResponse.json({message: "Pointage deleted"})
@@ -36,20 +62,28 @@ export async function DELETE(request: Request,{ params }: { params: { id: string
 }
 
 export async function PUT(request: Request,{ params }: { params: { id: string } }) {
+  const code = headers()?.get('code')
+
+  const verify = await verifyCode(code)
+
+  if (verify)
+    return verify
   if (!params.id) {
     return NextResponse.json({status: 400})
   }
-  await connectDB()
 
   try {
     const { date, pause } = await request.json()
-    const pointageFound = await pointage?.findById(params.id).select('date pause')
-    if (!pointageFound) {
+    const res = await prisma.pointage.update({
+      where: {id: params.id},
+      data: {
+        date: date,
+        pause: pause,
+      }
+    })
+    if (!res)
       return NextResponse.json({messge: "Pointage not found"}, {status: 404})
-    }
-    if (date) pointageFound.date = date
-    if (pause) pointageFound.pause = pause
-    pointageFound.save()
+
     return NextResponse.json({message: "Pointage Modified"})
   } catch (err) {
     return NextResponse.json({message: err}, {status: 500})

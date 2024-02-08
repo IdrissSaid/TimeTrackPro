@@ -1,50 +1,58 @@
-import User from '@/Model/User';
-import connectDB from '@/app/lib/connectDB';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
+import { headers } from 'next/headers';
+import prisma from '@/db';
+import verifyCode from '@/app/lib/verify';
 
 export async function GET() {
-  await connectDB();
+  const code = headers()?.get('code')
 
+  if (!code)
+    return NextResponse.json({ message: "Access Denied"}, { status: 403 })
+
+  const verify = await verifyCode(code)
+
+  if (verify)
+    return verify
   try {
-    if (!User)
-      return NextResponse.json({ message: "Erreur Server" }, { status: 500})
-    const users = await User.find().select('firstName role lastName code').populate('pointages', 'date pause');
+    const users = await prisma.user.findMany({
+      select: {
+        firstName: true,
+        role: true,
+        lastName: true,
+        code: true,
+        pointages: {
+          select: {
+            date: true, pause: true
+          }
+        },
+      },
+    })
     return NextResponse.json({ message: "Utilisateurs récupérés !", users });
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ message: err }, { status: 500 });
+    return NextResponse.json({ message: "Server Error" }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
-  await connectDB();
-
   try {
-    const { firstName, lastName, role, pointage } = await req.json();
-    const hashedCode = await bcrypt.hash(("" + Math.random()).substring(2, 8), 10)
-    if (!User)
-      return NextResponse.json({ message: "Erreur Server" }, { status: 500})
-    const new_user = new User({
-      firstName: firstName,
-      lastName: lastName,
-      role: role,
-      code: hashedCode,
-    });
-
-    await new_user.save();
-    new_user.validateSync();
-    return NextResponse.json({ message: "Utilisateur Créer !" }, { status: 200 });
-  } catch (error: any) {
-    if (error.name === 'ValidationError') {
-      const validationErrors: Record<string, string>  = {};
-      for (const field in error.errors) {
-        validationErrors[field] = error.errors[field].message;
+    const { firstName, lastName, role } = await req.json();
+    const code = ("" + Math.random()).substring(2, 8)
+    // const hashedCode = await bcrypt.hash(code, 10)
+    const res = await prisma.user.create({
+      data: {
+        firstName: firstName,
+        lastName: lastName,
+        role: role,
+        code: code,
       }
-      return NextResponse.json({ message: "Validation Error", details: validationErrors }, { status: 400 });
-    } else {
-      console.error(error);
-      return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
-    }
+    })
+    if (!res)
+      return NextResponse.json({ message: "Internal Server Error", code }, { status: 500 });
+    return NextResponse.json({ message: "Utilisateur Créer !", code }, { status: 200 });
+  } catch (error: any) {
+    console.error(error);
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   };
 }

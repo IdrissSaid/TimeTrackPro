@@ -1,13 +1,31 @@
-import pointage from '@/Model/Pointage'
-import user from '@/Model/User'
-import connectDB from '@/app/lib/connectDB'
+
 import { NextResponse } from 'next/server'
+import prisma from '@/db';
+import verifyCode from '@/app/lib/verify';
+import { headers } from 'next/headers';
 
 export async function GET() {
-  await connectDB()
+  const code = headers()?.get('code')
 
+  const verify = await verifyCode(code)
+
+  if (verify)
+    return verify
   try {
-    const pointages = await pointage?.find().select('date pause').populate('user', '-_id firstName lastName code role')
+    const pointages = await prisma.pointage.findMany({
+      select: {
+        date: true,
+        pause: true,
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            code: true,
+            role: true,
+          },
+        },
+      },
+    });
     return NextResponse.json({message: "Pointages récupérés !", pointages})
   } catch (err) {
     return NextResponse.json({message: err}, {status: 500})
@@ -15,52 +33,55 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  await connectDB()
-
   try {
     const { code, pause } = await req.json()
-    if (!pointage)
-      return NextResponse.json({message: "Erreur Serveur"}, {status: 500})
-
-    let userFounded
     let error
+    const realCode = (code && (code[0] === "A" || code[0] === "a")) ? code.slice(1, code.length) : code
 
-    if (code && (code[0] === "A" || code[0] === "a")) {
-      userFounded = await user?.findOne({code: code.slice(1, code.length)})
-      if (userFounded && userFounded.role.indexOf("ADMIN") == -1)
-        error = {message: "Access Denied", status: 403}
-    } else {
-      userFounded = await user?.findOne({code: code})
-      if (!userFounded)
-        error = {message: "User not found", status: 404}
-    }
+    const userFounded = await prisma.user?.findUnique({
+      where : {
+        code: realCode
+      },
+      include: {
+        pointages: true
+      }
+    })
+    if (!userFounded)
+      error = {message: "User not found", status: 404}
+    if (userFounded && (code[0] === "A" || code[0] === "a") && userFounded.role.indexOf("ADMIN") == -1)
+      error = {message: "Access Denied", status: 403}
+
     if (!userFounded || error)
       return NextResponse.json({message: error?.message || "User not found"}, {status: error?.status || 404})
 
-    const new_pointage = new pointage({
-      user: userFounded,
-      date: Date(),
-      pause: pause
-    })
+    if (userFounded && (code[0] === "A" || code[0] === "a") && userFounded.role.indexOf("ADMIN") == 1)
+      return NextResponse.redirect("/admin")
 
-    if(userFounded.pointages)
-      userFounded.pointages.push(new_pointage.id)
-    else
-      userFounded.pointages = [new_pointage.id]
-    new_pointage.validateSync()
-    await new_pointage.save()
-    await userFounded.save()
+    const newPointage = await prisma.pointage.create({
+      data: {
+        userId: userFounded.id,
+        date: new Date(),
+        pause: pause
+      },
+    });
+
+    await prisma.user?.update({
+      where: {
+        id: userFounded.id
+      },
+      data: {
+        pointages: {
+          connect: {
+            id: newPointage.id
+          }
+        }
+      }
+    });
+
     return NextResponse.json({message: "Opération réussite !"}, {status: 200})
   } catch (error : any) {
-    if (error.name === 'ValidationError') {
-      const validationErrors: Record<string, string>  = {};
-      for (const field in error.errors) {
-        validationErrors[field] = error.errors[field].message;
-      }
-      return NextResponse.json({ message: "Validation Error", details: validationErrors }, { status: 400 });
-    } else {
-      console.error(error);
-      return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
-    }
+    console.error(error);
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   };
 }
+

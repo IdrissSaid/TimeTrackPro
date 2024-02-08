@@ -1,33 +1,57 @@
-import Pointage from '@/Model/Pointage';
-import user from '@/Model/User'
-import connectDB from '@/app/lib/connectDB'
 import { NextResponse } from "next/server";
+import prisma from "@/db";
+import { headers } from "next/headers";
+import verifyCode from "@/app/lib/verify";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   if (!params.id) {
-    return NextResponse.json({status: 400})
+    return NextResponse.json({message: "User Not Found"}, {status: 404})
   }
-  await connectDB()
 
   try {
-    const userFound = await user?.findOne({ code: params.id }).select('-_id firstName role lastName code')
+    const userFound = await prisma.user?.findUnique({
+      where: {
+        code: params.id
+      },
+      select: {
+        firstName: true,
+        role: true,
+        lastName: true,
+        code: true
+      }
+    })
     if (!userFound) {
       return NextResponse.json({messge: "User not found"}, {status: 404})
     }
-    return NextResponse.json({messge: "User found", "user": userFound}, {status: 200})
+    return NextResponse.json({messge: "User found", "": userFound}, {status: 200})
   } catch (err) {
     return NextResponse.json({message: err}, {status: 500})
   }
 }
 
 export async function DELETE(request: Request,{ params }: { params: { id: string } }) {
+  const code = headers()?.get('code')
+
+  if (!code)
+    return NextResponse.json({ message: "Access Denied"}, { status: 403 })
+
+  const verify = await verifyCode(code)
+
+  if (verify)
+    return verify
   if (!params.id) {
       return NextResponse.json({status: 400})
   }
-  await connectDB()
 
   try {
-    const res = await user?.findOneAndDelete({ code: params.id })
+    const res = await prisma.user?.delete({
+      where: {
+        code: params.id
+      },
+      include: {
+        pointages: true
+      }
+    })
     if (!res)
       return NextResponse.json({messge: "User not found"}, {status: 404})
     return NextResponse.json({message: "User deleted"})
@@ -36,46 +60,57 @@ export async function DELETE(request: Request,{ params }: { params: { id: string
   }
 }
 
-export async function PUT(request: Request,{ params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: { id: string } }) {
+  const code = headers()?.get('code')
+
+  if (!code)
+    return NextResponse.json({ message: "Access Denied"}, { status: 403 })
+
+  const verify = await verifyCode(code)
+
+  if (verify)
+    return verify
   if (!params.id) {
-    return NextResponse.json({status: 400})
+    return NextResponse.json({ status: 400 });
   }
-  await connectDB()
 
   try {
-    const { firstName, lastName, role, pointage } = await request.json()
-    const userFound = await user?.findOne({ code: params.id }).select('firstName role lastName code')
+    const { firstName, lastName, role, pointage } = await request.json();
+    const userFound = await prisma.user?.findUnique({
+      where: {
+        code: params.id,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        role: true,
+        lastName: true,
+        code: true,
+        pointages: true
+      },
+    });
+
     if (!userFound) {
-      return NextResponse.json({messge: "User not found"}, {status: 404})
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
-    if (firstName) userFound.firstName = firstName
-    if (lastName) userFound.lastName = lastName
-    if (pointage && Pointage) {
-      const pointageFounded = await Pointage.findById(pointage)
-      if (userFound.pointages && pointageFounded)
-        userFound.pointages.push(pointageFounded._id)
-      else if (pointageFounded)
-        userFound.pointages = [pointageFounded._id]
-    }
-    if (role && typeof role === 'string') {
-      const index = userFound.role.indexOf(role);
-      userFound.role = index === -1
-        ? [...userFound.role, role]
-        : userFound.role.filter(item => item !== role);
-    } else if (role && Array.isArray(role) && role.length > 0) {
-      role.forEach((roleItem) => {
-        const index = userFound.role.indexOf(roleItem);
-        userFound.role = (index === -1)
-          ? [...userFound.role, roleItem]
-          : userFound.role.filter(item => item !== roleItem);
-        });
-      }
-    if (userFound.role.length == 0)
-      userFound.role.push("USER")
-    userFound.save()
-    return NextResponse.json({message: "User Modified"})
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userFound.id },
+      data: {
+        firstName: firstName || userFound.firstName,
+        lastName: lastName || userFound.lastName,
+        // pointages: {
+        //   connect: { id: pointage }
+        // },
+        role: role,
+      },
+    });
+
+    if (!updatedUser)
+      return NextResponse.json({ message: "Error when updating user" }, { status: 500 });
+    return NextResponse.json({ message: "User Modified" });
   } catch (err) {
-    console.log(err)
-    return NextResponse.json({message: err}, {status: 500})
+    console.error(err);
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
