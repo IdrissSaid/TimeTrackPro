@@ -4,7 +4,7 @@ import { ChangeEvent, FormEvent, useState } from "react";
 import { useCookies } from 'next-client-cookies';
 
 export default function Home() {
-  const [identifiant, setIdentifiant] = useState("566825");
+  const [identifiant, setIdentifiant] = useState("");
   const [message, setMessage] = useState("Ajouter \'A\' avant l\'identifiant pour le mode admin");
   const [styleError, setStyleError] = useState("text-blue-500")
   const [loading, setLoading] = useState(false);
