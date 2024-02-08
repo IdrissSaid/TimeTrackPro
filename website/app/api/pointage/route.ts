@@ -53,10 +53,11 @@ export async function POST(req: Request) {
 
     if (!userFounded || error)
       return NextResponse.json({message: error?.message || "User not found"}, {status: error?.status || 404})
-
-    if (userFounded && (code[0] === "A" || code[0] === "a") && userFounded.role.indexOf("ADMIN") == 1)
-      return NextResponse.redirect("/admin")
-
+console.log(userFounded, code,)
+    if (userFounded && (code[0] === "A" || code[0] === "a") && userFounded.role.indexOf("ADMIN") != -1) {
+  console.log("ok")
+  return NextResponse.json({redirect: `${process.env.URL}/admin`})
+    }
     const newPointage = await prisma.pointage.create({
       data: {
         userId: userFounded.id,

@@ -12,7 +12,6 @@ export default async function verifyCode(code: string | null) {
       role: true
     }
   })
-
   if (code !== userConnected?.code || !userConnected || userConnected.role.indexOf('ADMIN') == -1)
     return NextResponse.json({ message: "Access Denied"}, { status: 403 })
   return undefined

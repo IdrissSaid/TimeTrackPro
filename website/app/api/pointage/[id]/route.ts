@@ -32,6 +32,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
     return NextResponse.json({messge: "Pointage found", "pointage": pointageFound}, {status: 200})
   } catch (err) {
+    console.error(err)
     return NextResponse.json({message: err}, {status: 500})
   }
 }
