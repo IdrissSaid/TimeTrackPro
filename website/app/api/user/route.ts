@@ -34,7 +34,7 @@ export async function POST(req: Request) {
 
     await new_user.save();
     new_user.validateSync();
-    return NextResponse.json({ message: "Utilisateur Créer !" }, { status: 200 });
+    return NextResponse.json({ message: "Utilisateur Créer !", code }, { status: 200 });
   } catch (error: any) {
     if (error.name === 'ValidationError') {
       const validationErrors: Record<string, string>  = {};

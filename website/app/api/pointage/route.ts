@@ -19,14 +19,23 @@ export async function POST(req: Request) {
 
   try {
     const { code, pause } = await req.json()
-
     if (!pointage)
       return NextResponse.json({message: "Erreur Serveur"}, {status: 500})
 
-    const userFounded = await user?.findOne({code: code})
+    let userFounded
+    let error
 
-    if (!userFounded)
-      return NextResponse.json({messge: "User not found"}, {status: 404})
+    if (code && (code[0] === "A" || code[0] === "a")) {
+      userFounded = await user?.findOne({code: code.slice(1, code.length)})
+      if (userFounded && userFounded.role.indexOf("ADMIN") == -1)
+        error = {message: "Access Denied", status: 403}
+    } else {
+      userFounded = await user?.findOne({code: code})
+      if (!userFounded)
+        error = {message: "User not found", status: 404}
+    }
+    if (!userFounded || error)
+      return NextResponse.json({message: error?.message || "User not found"}, {status: error?.status || 404})
 
     const new_pointage = new pointage({
       user: userFounded,
@@ -41,7 +50,7 @@ export async function POST(req: Request) {
     new_pointage.validateSync()
     await new_pointage.save()
     await userFounded.save()
-    return NextResponse.json({message: "Pointage Créer !"}, {status: 200})
+    return NextResponse.json({message: "Opération réussite !"}, {status: 200})
   } catch (error : any) {
     if (error.name === 'ValidationError') {
       const validationErrors: Record<string, string>  = {};
