@@ -1,6 +1,7 @@
 import User from '@/Model/User';
 import connectDB from '@/app/lib/connectDB';
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcrypt';
 
 export async function GET() {
   await connectDB();
@@ -21,20 +22,19 @@ export async function POST(req: Request) {
 
   try {
     const { firstName, lastName, role, pointage } = await req.json();
-    const code = ("" + Math.random()).substring(2, 8);
-
+    const hashedCode = await bcrypt.hash(("" + Math.random()).substring(2, 8), 10)
     if (!User)
       return NextResponse.json({ message: "Erreur Server" }, { status: 500})
     const new_user = new User({
       firstName: firstName,
       lastName: lastName,
       role: role,
-      code: code,
+      code: hashedCode,
     });
 
     await new_user.save();
     new_user.validateSync();
-    return NextResponse.json({ message: "Utilisateur Créer !", code }, { status: 200 });
+    return NextResponse.json({ message: "Utilisateur Créer !" }, { status: 200 });
   } catch (error: any) {
     if (error.name === 'ValidationError') {
       const validationErrors: Record<string, string>  = {};
