@@ -10,7 +10,6 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   try {
     const pointageFound = await pointage?.findById(params.id).select('date pause').populate('user', '-_id firstName lastName code role')
-    console.log(pointageFound)
     if (!pointageFound) {
       return NextResponse.json({messge: "Pointage not found"}, {status: 404})
     }

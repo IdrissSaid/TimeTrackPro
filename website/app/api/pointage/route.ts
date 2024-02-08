@@ -7,7 +7,7 @@ export async function GET() {
   await connectDB()
 
   try {
-    const pointages = await pointage?.find().select('-_id date pause').populate('user', '-_id firstName lastName code role')
+    const pointages = await pointage?.find().select('date pause').populate('user', '-_id firstName lastName code role')
     return NextResponse.json({message: "Pointages récupérés !", pointages})
   } catch (err) {
     return NextResponse.json({message: err}, {status: 500})
@@ -34,8 +34,13 @@ export async function POST(req: Request) {
       pause: pause
     })
 
-    await new_pointage.save()
+    if(userFounded.pointages)
+      userFounded.pointages.push(new_pointage.id)
+    else
+      userFounded.pointages = [new_pointage.id]
     new_pointage.validateSync()
+    await new_pointage.save()
+    await userFounded.save()
     return NextResponse.json({message: "Pointage Créer !"}, {status: 200})
   } catch (error : any) {
     if (error.name === 'ValidationError') {

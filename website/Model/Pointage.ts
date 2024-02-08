@@ -23,7 +23,6 @@ const Pointage: Model<IPointage> | undefined = mongoose.models.Pointage
         },
         pause: {
           type: Boolean,
-          unique: true,
           required: [true, 'It\'s pause'],
         },
       },

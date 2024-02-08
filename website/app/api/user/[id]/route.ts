@@ -1,3 +1,4 @@
+import Pointage from '@/Model/Pointage';
 import user from '@/Model/User'
 import connectDB from '@/app/lib/connectDB'
 import { NextResponse } from "next/server";
@@ -42,13 +43,20 @@ export async function PUT(request: Request,{ params }: { params: { id: string } 
   await connectDB()
 
   try {
-    const { firstName, lastName, role } = await request.json()
+    const { firstName, lastName, role, pointage } = await request.json()
     const userFound = await user?.findOne({ code: params.id }).select('firstName role lastName code')
     if (!userFound) {
       return NextResponse.json({messge: "User not found"}, {status: 404})
     }
     if (firstName) userFound.firstName = firstName
     if (lastName) userFound.lastName = lastName
+    if (pointage && Pointage) {
+      const pointageFounded = await Pointage.findById(pointage)
+      if (userFound.pointages && pointageFounded)
+        userFound.pointages.push(pointageFounded._id)
+      else if (pointageFounded)
+        userFound.pointages = [pointageFounded._id]
+    }
     if (role && typeof role === 'string') {
       const index = userFound.role.indexOf(role);
       userFound.role = index === -1
@@ -67,6 +75,7 @@ export async function PUT(request: Request,{ params }: { params: { id: string } 
     userFound.save()
     return NextResponse.json({message: "User Modified"})
   } catch (err) {
+    console.log(err)
     return NextResponse.json({message: err}, {status: 500})
   }
 }

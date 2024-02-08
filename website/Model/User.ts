@@ -5,6 +5,7 @@ export interface IUser extends Document {
   lastName: string;
   role: string[];
   code: string;
+  pointages: [type: mongoose.Types.ObjectId];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +29,13 @@ const User: Model<IUser> | undefined = mongoose.models.User
             validator: (roles: string[]) => roles.length > 0,
             message: 'At least one role is required',
           },
+        },
+        pointages: {
+          type: [{
+            type: mongoose.Types.ObjectId,
+            ref: "Pointage",
+          }],
+          default: [],
         },
         code: {
           type: String,
