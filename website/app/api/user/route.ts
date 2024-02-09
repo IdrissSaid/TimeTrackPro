@@ -21,6 +21,7 @@ export async function GET() {
         role: true,
         lastName: true,
         code: true,
+        heures: true,
         pointages: {
           select: {
             date: true, pause: true
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
     // const hashedCode = await bcrypt.hash(code, 10)
     const res = await prisma.user.create({
       data: {
+        heures: 0,
         firstName: firstName,
         lastName: lastName,
         role: role,

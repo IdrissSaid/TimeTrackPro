@@ -19,6 +19,12 @@ function TableView({ data }: { data: Array<IUser> }) {
                   Code
                 </th>
                 <th scope="col" className="px-6 py-3">
+                  Pointages
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Heure
+                </th>
+                <th scope="col" className="px-6 py-3">
                     <span className="sr-only">Edit</span>
                 </th>
             </tr>
@@ -31,6 +37,8 @@ function TableView({ data }: { data: Array<IUser> }) {
                 <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{line.firstName} {line.lastName}</th>
                 <td className="px-6 py-4">{line.role}</td>
                 <td className="px-6 py-4">{line.code}</td>
+                <td className="px-6 py-4">{line.pointages?.length}</td>
+                <td className="px-6 py-4">{line.heures}</td>
                 <td className="px-6 py-4 text-right">
                     <a href={`admin/user/${line.code}`} className="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
                 </td>
@@ -40,6 +48,8 @@ function TableView({ data }: { data: Array<IUser> }) {
         }
         </tbody>
         <tr>
+          <th></th>
+          <th></th>
           <th></th>
           <th></th>
           <th></th>
@@ -67,7 +77,7 @@ export default function Admin() {
 
   return (
     <div className="flex bg-white items-center justify-center h-screen">
-      <div className="overflow-x-auto shadow-md sm:rounded-lg w-1/2">
+      <div className="overflow-x-auto shadow-md sm:rounded-lg w-4/5">
         <TableView data={data}/>
       </div>
     </div>

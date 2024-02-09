@@ -53,9 +53,7 @@ export async function POST(req: Request) {
 
     if (!userFounded || error)
       return NextResponse.json({message: error?.message || "User not found"}, {status: error?.status || 404})
-console.log(userFounded, code,)
     if (userFounded && (code[0] === "A" || code[0] === "a") && userFounded.role.indexOf("ADMIN") != -1) {
-  console.log("ok")
   return NextResponse.json({redirect: `${process.env.URL}/admin`})
     }
     const newPointage = await prisma.pointage.create({
@@ -65,7 +63,18 @@ console.log(userFounded, code,)
         pause: pause
       },
     });
+    let nb_heures: number = userFounded.heures;
 
+    if (userFounded.pointages.length > 1) {
+      const lastPointage = userFounded.pointages[userFounded.pointages.length - 1].date;
+      const beforeLastPointage = userFounded.pointages[userFounded.pointages.length - 2].date;
+
+      const timeDifference = (lastPointage.getTime() - beforeLastPointage.getTime()) as number;
+
+      const hoursDifference = timeDifference / (1000 * 60 * 60);
+
+      nb_heures += hoursDifference;
+    }
     await prisma.user?.update({
       where: {
         id: userFounded.id
@@ -75,7 +84,8 @@ console.log(userFounded, code,)
           connect: {
             id: newPointage.id
           }
-        }
+        },
+        heures: nb_heures
       }
     });
 
